@@ -1,0 +1,8 @@
+"","ID","location","lat","lon","depth_m","deploy_date","lastCheck","lastUpdated","yrs_avail","sponsor","origin","nextCheck","aboutSite","totalTransmitters","transmittersDet2023","totalVisits","transmitterVisits2023","dates2023","sensorLoc"
+"1",1,"Ogunquit Beach",43.265,-70.58,"6 m",2023-06-09,"December 2023",2026-03-24,5,"Maine DMR",2021,"Spring 2026","One of several sites used in the Maine DMR acoustics program",0,"0",0,0,"","surface"
+"2",2,"Wells Beach",43.30167,-70.55667,"8 m",2023-06-09,"December 2023",2026-03-24,6,"Maine DMR",2021,"Spring 2026","One of several sites used in the Maine DMR acoustics program",1,"1: A69-9001-1114",1,1,"Aug 16","surface"
+"3",3,"Kennebunk Beach",43.33668,-70.51257,"8 m",2023-06-09,"December 2023",2026-03-24,5,"Maine DMR",2021,"Spring 2026","One of several sites used in the Maine DMR acoustics program",1,"1: A69-9001-1114",1,1,"Aug 16","surface"
+"4",4,"Saco Bay",43.51073,-70.34556,"15 m",2023-05-12,"December 2023",2026-03-24,4,"Maine DMR",2021,"Spring 2026","One of several sites used in the Maine DMR acoustics program",0,"0",0,0,"","surface"
+"5",5,"Stratton Island",43.51185,-70.31087,"20 m",2023-05-12,"December 2023",2026-03-24,5,"Maine DMR",2021,"Spring 2026","One of several sites used in the Maine DMR acoustics program",0,"0",0,0,"","surface"
+"6",6,"Scarborough Beach",43.53927,-70.30211,"11 m",2023-05-12,"December 2023",2026-03-24,5,"Maine DMR",2021,"Spring 2026","One of several sites used in the Maine DMR acoustics program",1,"0",1,0,"","surface"
+"7",7,"Black Rocks",43.75991,-69.71002,"26 m",2023-05-12,"December 2023",2026-03-24,2,"Maine DMR",2021,"Spring 2026","One of several sites used in the Maine DMR acoustics program",1,"0",1,0,"","surface"

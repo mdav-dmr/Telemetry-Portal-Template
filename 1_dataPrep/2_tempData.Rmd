@@ -1,0 +1,211 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+load packages
+```{r, warning = F}
+library(tidyverse)
+library(dplyr)
+library(plotly)
+```
+
+
+
+load the resulting data from 1_mapData and site metadata
+```{r}
+
+output_path <- "../2_shinyApp/data/data.csv"
+data <- read.csv(file = output_path)
+
+#Contains columns: array (ACT code), location, lat, lon, depth_m (bottom depth), deploy_datetime, year, receiver
+dep <- read.csv("example_csv_files/deps.csv")
+
+```
+
+
+
+load fathom CSV files and keep only temperature data
+```{r}
+
+#for the sake of this example, we provide a dataframe format akin to the expected result
+temps <- read.csv("example_csv_files/temps.csv")
+
+#however, if you need to load fathom csv files use the code that follows:
+parse_fathom <- function(file) {
+  
+  lines <- read_lines(file)
+  #identify detection lines
+  temp_lines   <- lines[str_detect(lines, "^TEMP,")]
+  # Parse each independently
+  df_temp <- if (length(temp_lines) > 0)
+    read_csv(paste(temp_lines, collapse="\n"),
+             col_names = FALSE, show_col_types = FALSE)
+  else tibble()
+  # Return separately
+  list(temp = df_temp)}
+
+#load Files
+folder <- c(
+  "enter location of folder containing fathom csv's")
+
+#List all CSV files
+files <- list.files(folder, pattern = "\\.csv$", full.names = TRUE)
+
+#Parse each file
+parsed <- lapply(files, parse_fathom)
+
+#Name entries after filename 
+names(parsed) <- tools::file_path_sans_ext(basename(files))
+ 
+#Combine detections
+temps <- bind_rows(
+  lapply(names(parsed), function(n) {
+    if (nrow(parsed[[n]]$temp) > 0)
+      parsed[[n]]$temp |> mutate(file = n)}), .id = NULL)
+
+temps <- temps %>%
+ dplyr::mutate(receiver = paste0(X6,"-",X7),
+               receiver = gsub("-69-", "-", receiver),
+               temp = X8,
+               datetime = X2) %>%
+  dplyr::select(receiver,datetime,temp) %>%
+  unique()
+
+rm(parsed,files,folder,parse_fathom)
+
+```
+
+
+
+assign ID to temp data,extract date
+```{r}
+
+temps <- temps %>%
+  left_join(dep %>% select(receiver, location), by = "receiver") %>%
+  unique()
+
+temps <- merge(
+  temps,
+  data,
+  by = "location") %>%
+  dplyr::select(ID,location,receiver,datetime,temp) %>%
+  dplyr::mutate(date = as.Date(datetime)) %>%
+  unique()
+
+```
+
+
+
+Here we are going to filter out temp data that may not be useful to us (i.e., before or after receiver was deployed) and switch from C to F. Use a plot in this first chunk to view data, and then filter in the second chunk. 
+```{r}
+plot_data <- temps %>%
+  arrange(ID, datetime)
+receiver_Names <- sort(unique(plot_data$ID))
+
+plot_all <- plot_ly()
+
+for (i in seq_along(receiver_Names)) {
+  r <- receiver_Names[i]
+  df <- plot_data %>% filter(ID == r)
+  plot_all <- plot_all %>%
+    add_lines(
+      data = df,
+      x = ~datetime,
+      y = ~temp,
+      name = paste("Receiver", r),
+      visible = ifelse(i == 1, TRUE, FALSE))}
+
+plot_all <- plot_all %>%
+  layout(
+    title = "Receiver Temperature Inspection",
+    xaxis = list(title = "Date"),
+    yaxis = list(title = "Temperature"),
+    updatemenus = list(
+      list(
+        type = "dropdown",
+        active = 0,
+        buttons = lapply(seq_along(receiver_Names), function(i) {
+          list(
+            method = "update",
+            args = list(
+              list(visible = seq_along(receiver_Names) == i),
+              list(title = paste("Receiver", receiver_Names[i], "Temperature"))),
+            label = receiver_Names[i])}))))
+
+plot_all
+```
+
+
+```{r}
+temps <- temps %>%
+  filter(
+    (ID = 1 & 
+      (between(date, as.Date("2023-05-17"), as.Date("2023-11-14")))))  %>%
+  dplyr::mutate(temp = (temp * (9/5)) + 32)
+```
+
+
+now make sure the resulting temp data looks right
+```{r}
+plot_data <- temps %>%
+  group_by(ID) %>%
+  arrange(datetime) %>%
+  mutate(
+    gap_hours = as.numeric(difftime(datetime, lag(datetime), units = "hours")),
+    temp = ifelse(!is.na(gap_hours) & gap_hours > 24, NA, temp)
+  ) %>%
+  ungroup()
+receiver_IDs <- sort(unique(plot_data$ID))
+
+plot_all <- plot_ly()
+
+for (i in seq_along(receiver_IDs)) {
+  r <- receiver_IDs[i]
+  df <- plot_data %>% filter(ID == r)
+
+  plot_all <- plot_all %>%
+    add_lines(
+      data = df,
+      x = ~datetime,
+      y = ~temp,
+      name = paste("Receiver", r),
+      visible = ifelse(i == 1, TRUE, FALSE)
+    )
+}
+
+plot_all <- plot_all %>%
+  layout(
+    title = "Receiver Temperature Inspection",
+    xaxis = list(title = "Date"),
+    yaxis = list(title = "Temperature"),
+    updatemenus = list(
+      list(
+        type = "dropdown",
+        active = 0,
+        buttons = lapply(seq_along(receiver_IDs), function(i) {
+          list(
+            method = "update",
+            args = list(
+              list(visible = seq_along(receiver_IDs) == i),
+              list(title = paste("Receiver", receiver_IDs[i], "Temperature"))
+            ),
+            label = receiver_IDs[i]
+          )
+        })
+      )
+    )
+  )
+
+plot_all
+```
+
+
+export 
+```{r}
+
+output_path <- "../2_shinyApp/data/temp.csv"
+write.csv(temps, file = output_path, row.names = FALSE)
+
+```

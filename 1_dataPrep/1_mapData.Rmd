@@ -1,0 +1,296 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+load packages
+```{r, include=FALSE}
+library(tidyverse)  
+library(tools)  
+library(lubridate)
+```
+
+
+
+load pre-edited receiver metadata data
+```{r}
+
+#Contains columns: array (ACT code), location, lat, lon, depth_m (bottom depth), deploy_datetime, year, receiver
+dep <- read.csv("example_csv_files/deps.csv")
+
+```
+
+
+
+load fathom CSV files and keep only detection data
+```{r}
+
+#for the sake of this example, we provide a dataframe format akin to the expected result
+dets <- read.csv("example_csv_files/dets.csv")
+
+#however, if you need to load fathom csv files use the code that follows:
+parse_fathom <- function(file) {
+  
+  lines <- read_lines(file)
+  #identify detection lines
+  det_lines   <- lines[str_detect(lines, "^DET,")]
+  # Parse each independently
+  df_det <- if (length(det_lines) > 0)
+    read_csv(paste(det_lines, collapse="\n"),
+             col_names = FALSE, show_col_types = FALSE)
+  else tibble()
+  # Return separately
+  list(det = df_det)}
+
+#load Files
+folder <- c(
+  "enter location of folder containing fathom csv's")
+
+#List all CSV files
+files <- list.files(folder, pattern = "\\.csv$", full.names = TRUE)
+
+#Parse each file
+parsed <- lapply(files, parse_fathom)
+
+#Name entries after filename 
+names(parsed) <- tools::file_path_sans_ext(basename(files))
+ 
+#Combine detections
+dets <- bind_rows(
+  lapply(names(parsed), function(n) {
+    if (nrow(parsed[[n]]$det) > 0)
+      parsed[[n]]$det |> mutate(file = n)}), .id = NULL)
+
+dets <- dets %>%
+ dplyr::mutate(receiver = paste0(X6,"-",X7),
+               transmitter = X10,
+               datetime = ymd_hms(X2)) %>% 
+ dplyr::select(receiver,datetime,transmitter) %>%
+ dplyr::mutate(year = year(datetime)) %>%
+ unique()
+
+  #in case you need it for VR2Tx or : 
+dets$receiver <- gsub("-69-", "-", dets$receiver)
+
+#resulting dataframe has columns: receiver, datetime (at detection), year (of detection), and transmitter)
+
+#remove unecessary items from environment
+rm(parse_fathom,parsed,files,folder)
+
+```
+
+
+
+merge receiver metadata and detection data
+```{r}
+
+a_master <- merge(dets,
+               dep,
+               by = c(
+                 "receiver",
+                 "year"))
+
+#clean to leave only what you want
+a_master <- a_master %>%
+  dplyr::select(
+    location,
+    receiver,
+    lat,
+    lon,
+    year,
+    transmitter,
+    datetime,
+    depth_m) %>%
+  dplyr::distinct()
+
+```
+
+
+
+
+summarize sites for shinyapp 
+```{r}
+
+data.deps <- dep %>%
+  dplyr::group_by(location) %>%
+  dplyr::mutate(yrs_avail = n_distinct(year)) %>%
+  dplyr::ungroup() %>%
+  #toggle the filter below depending on your planned reporting period. Depending on the year you are reporting, or if you are reporting all years, you will need to edit the code that follows.  
+  dplyr::filter(year == 2023) %>%
+  dplyr::select(array, location, lat, lon, depth_m, deploy_datetime, yrs_avail) %>%
+  #extract one row per location (the most recent deployment)
+  dplyr::group_by(location) %>%
+  dplyr::slice_max(deploy_datetime, n = 1, with_ties = FALSE) %>%
+  dplyr::ungroup() %>%
+  #this arranges the sites for assigning number ID's
+  dplyr::arrange(lon, lat) %>%
+  dplyr::mutate(
+    ID = dplyr::row_number(),
+    depth_m = paste0(round(depth_m, 0), " m"),
+    deploy_date = as.Date(deploy_datetime),
+    #below, you enter the date/month that receivers were last checked.
+    lastCheck = "December 2023", 
+    lastUpdated = Sys.Date(),
+    #below, you enter when they will be checked next
+    nextCheck = "Spring 2026",
+    #enter sponsoring body
+    sponsor = dplyr::case_when(
+      array == "NGOMWS" ~ "Maine DMR"),
+    #when Rx site was established
+    origin = dplyr::case_when(
+      array == "NGOMWS" ~ 2021),
+    #any info you want to display
+    aboutSite = dplyr::case_when(
+      array == "NGOMWS" ~ "One of several sites used in the Maine DMR acoustics program")) %>%     
+  dplyr::select(ID, location, lat, lon, depth_m, deploy_date, lastCheck, 
+                lastUpdated, yrs_avail, sponsor, origin, nextCheck, aboutSite)
+
+
+```
+
+
+
+get count of unique transmitters that have been detected 
+```{r}
+
+data.dets <- a_master %>%
+  group_by(location) %>%
+  summarise(
+    
+    totalTransmitters = n_distinct(transmitter),
+    transmittersDet2023 = {
+      t2023 <- unique(transmitter[year == 2023])
+      if(length(t2023) > 0) {
+        paste0(length(t2023), ": ", paste(t2023, collapse = ", "))
+      } else {
+        "0"}
+    },
+    .groups = "drop")
+
+```
+
+
+
+calculate "visits" from your transmitters
+```{r}
+
+visits <- a_master %>%
+  dplyr::arrange(location, transmitter, datetime) %>%
+  dplyr::group_by(location, transmitter) %>%
+  dplyr::mutate(
+    time_diff = as.numeric(difftime(datetime, dplyr::lag(datetime), units = "mins")),
+    is_new_event = dplyr::if_else(is.na(time_diff) | time_diff > 60, 1, 0),
+    event_id = cumsum(is_new_event)) %>%
+  dplyr::group_by(location, transmitter, event_id) %>%
+  dplyr::summarise(firstdatetime = min(datetime), .groups = "drop")
+
+data.visit <- visits %>%
+  dplyr::mutate(year = lubridate::year(firstdatetime)) %>%
+  dplyr::group_by(location) %>%
+  dplyr::summarise(
+    totalVisits = dplyr::n(),
+    transmitterVisits2023 = sum(year == 2023),
+    .groups = "drop")
+
+```
+
+
+
+get day-specific visit data
+```{r}
+
+format_dates <- function(dates) {
+  
+  dates <- as.Date(dates)
+  
+  tibble(date = dates) %>%
+    mutate(
+      year  = lubridate::year(date),
+      month = lubridate::month(date),
+      month_lbl = format(date, "%b"),
+      day = lubridate::day(date)) %>%
+    arrange(year, month, day) %>%
+    group_by(year, month, month_lbl) %>%
+    summarise(
+      month_text = {
+        d <- day
+        
+        runs <- split(d, cumsum(c(1, diff(d) != 1)))
+        
+        paste0(
+          first(month_lbl), " ",
+          paste(
+            vapply(runs, function(r) {
+              if (length(r) >= 3) {
+                paste0(min(r), "-", max(r))
+              } else {
+                paste(r, collapse = ", ")
+              }
+            }, character(1)),
+            collapse = ", "
+          )
+        )
+      },
+      .groups = "drop"
+    ) %>%
+    pull(month_text) %>%
+    paste(collapse = "; ")
+}
+
+
+data.visit.days <- visits %>%
+  ungroup() %>%
+  dplyr::mutate(firstEST = as.Date(firstdatetime, tz = 'EST')) %>%
+  filter(year(firstEST) == 2023) %>%
+  dplyr::select(location,firstEST) %>%
+  unique() %>%
+  dplyr::group_by(location) %>%
+  summarise(
+    dates2023 = format_dates(firstEST),
+    .groups = "drop")
+
+rm(format_dates)
+
+```
+
+
+
+merge data into one final df
+```{r}
+
+data.final <- data.deps %>%
+  left_join(data.dets, by = "location") %>%
+  left_join(data.visit, by = "location") %>%
+  left_join(data.visit.days, by = "location") %>%
+  # Clean up NAs
+  mutate(
+    transmittersDet2023 = replace_na(transmittersDet2023, "0"),
+    totalTransmitters = replace_na(totalTransmitters, 0),
+    transmitterVisits2023 = replace_na(transmitterVisits2023, 0),
+    totalVisits = replace_na(totalVisits, 0),
+    dates2023 = replace_na(dates2023, ""))
+
+```
+
+
+
+Check that data.final is good to go. Add in sensorLoc, which is where in the water column the receiver was moored.
+```{r}
+data.final <- data.final %>%
+  dplyr::mutate(sensorLoc = case_when(
+    ID %in% 1:7 ~ "surface"
+  ))
+
+data.final$dates2023[is.na(data.final$dates2023)] <- ""
+```
+
+
+
+Export into your data subfolder within the shinyapp folder
+```{r}
+
+output_path <- "../2_shinyApp/data/data.csv"
+write.csv(data.final, file = output_path, row.names = FALSE)
+
+```
