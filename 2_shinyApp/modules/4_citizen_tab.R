@@ -27,7 +27,7 @@ citizenTabUI <- function(id) {
                  h4("If you or your community is interested in purchasing an acoustic receiver for us to place in a certain area, reach out to us via the 'Contact Us' page and select 'Research' as your inquiry subject. Let us know the area you are interested in, and we can discuss feasibility."),
                  h2("", style = "margin-bottom: 20px;"),
                  h4(strong("Receiver deployment")),
-                 h4("Receiver sites are deployed in a joint effort between DMR scientists and contracted commercial fishermen. As of now, sites to the west of Rockland are deployed by two fishermen. To the east of Rockland, sites are broken up between many fishermen. If you are interested in potentially participating, reach out to us on the 'Contact Us' page and and select 'Research' as your inqiry subject."),
+                 h4("Receiver sites are deployed in a joint effort between scientists and contracted commercial fishermen. As of now, sites to the west of Rockland are deployed by two fishermen. To the east of Rockland, sites are broken up between many fishermen. If you are interested in potentially participating, reach out to us on the 'Contact Us' page and and select 'Research' as your inqiry subject."),
                  h3("More Ways to Stay Engaged"),
                  h2("", style = "margin-bottom: 20px;"),
                  h4(strong("Visit the Maine Aquarium")),
