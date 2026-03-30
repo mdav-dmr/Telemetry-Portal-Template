@@ -24,8 +24,8 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown",
       tags$a(
-        href = "https://www.maine.gov/dmr/home",
-        target = "_blank", "Return to Maine DMR Website",
+        href = "enter link url here",
+        target = "_blank", "Return to ___ Website",
         style = "color: black;
         font-weight: bold;
         text-decoration: underline;
