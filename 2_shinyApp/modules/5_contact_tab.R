@@ -10,7 +10,7 @@ contactTabUI <- function(id) {
       column(width = 8,   
              box(title = "Contact Form",
                  width = NULL, solidHeader = TRUE, status = "primary",
-                 h4("The Sea Monster Program at the Maine DMR prides itself on transparency, outreach, and public engagement. There are a limited number of staff members assigned to this work, and so we kindly ask for your patience in responding to emails, particularly during summer months."),
+                 h4("The Sea Monster Program at the Maine science group prides itself on transparency, outreach, and public engagement. There are a limited number of staff members assigned to this work, and so we kindly ask for your patience in responding to emails, particularly during summer months."),
                  textInput(ns("name"), "Your Name", width = "300px"),
                  textInput(ns("email"), "Your Email", width = "300px"),
                  radioButtons(ns("inquiryType"), "Type of Inquiry",
