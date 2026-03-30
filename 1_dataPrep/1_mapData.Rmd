@@ -136,13 +136,13 @@ data.deps <- dep %>%
     nextCheck = "Spring 2026",
     #enter sponsoring body
     sponsor = dplyr::case_when(
-      array == "NGOMWS" ~ "Maine DMR"),
+      array == "NGOMWS" ~ "Maine"),
     #when Rx site was established
     origin = dplyr::case_when(
       array == "NGOMWS" ~ 2021),
     #any info you want to display
     aboutSite = dplyr::case_when(
-      array == "NGOMWS" ~ "One of several sites used in the Maine DMR acoustics program")) %>%     
+      array == "NGOMWS" ~ "One of several sites used in the Maine acoustics program")) %>%     
   dplyr::select(ID, location, lat, lon, depth_m, deploy_date, lastCheck, 
                 lastUpdated, yrs_avail, sponsor, origin, nextCheck, aboutSite)
 
