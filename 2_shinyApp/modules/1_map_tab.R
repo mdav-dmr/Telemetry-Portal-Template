@@ -23,8 +23,8 @@ mapTabUI <- function(id) {
                  h4("The map below displays the general location of monitoring stations and their affiliated data as part of the Maine Sea Monster Monitoring Program. Data from retired sites not shown. For more information, see the 'About the Survey' page. We recommend expanding this window to full-screen on a computer for the best exeprience."),
                  
                  h4("Sea monsters tagged by ",
-                    tags$a("Maine DMR.",
-                           href = "https://www.maine.gov/dmr/home",
+                    tags$a("Maine scientists.",
+                           href = "enter website url here",
                            target = "_blank"), (" "),
                     h4(strong("The map below is not to be used as a public safety tool.")))
              ) #box
